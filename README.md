@@ -208,9 +208,3 @@ Endpoints consumidos:
 
 - **404 em `/checkout/[id]`**  
   → Verifique o nome da pasta dinâmica: **`src/app/checkout/[productId]`** (sem espaços).
-
----
-
-## 📄 Licença
-
-MIT (ou a da empresa/desafio).
