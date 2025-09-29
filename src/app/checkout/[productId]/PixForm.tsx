@@ -1,34 +1,39 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useIdempotentPost } from "@/hooks/idempotency";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 type Product = { id: string; priceCents: number };
 type PixCreateResp = {
-  orderId: string; paymentId: string; txid: string; qrBase64: string; copyPaste: string; status: "PENDING";
+  orderId: string;
+  paymentId: string; 
+  txid: string; 
+  qrBase64: string; 
+  copyPaste: string; 
+  status: "PENDING";
 };
 
 export default function PixForm({ product }: { product: Product }) {
   const [resp, setResp] = useState<PixCreateResp | null>(null);
   const [status, setStatus] = useState<string>("");
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const router = useRouter();
 
+  const { run: createPix, loading } = useIdempotentPost<PixCreateResp>("/payments/pix", "PIX");
+
   async function onCreate() {
-    setLoading(true);
     try {
-      const r = await api<PixCreateResp>("/payments/pix", {
-        method: "POST",
-        body: JSON.stringify({
-          productId: product.id,
-          customer: { name: "Tester", email: "t@e.com", cpf: "12345678901", phone: "51999999999" },
-        }),
-      });
+      const body = {
+        productId: product.id,
+        customer: { name: "Tester", email: "t@e.com", cpf: "12345678901", phone: "51999999999" }
+      };
+      const r = await createPix(body);
       setResp(r);
       setStatus("PENDING");
-    } catch (e: any) { alert("Erro ao criar PIX: " + e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) {
+      alert("Erro ao criar PIX: " + (e?.message ?? e));
+    }
   }
 
   useEffect(() => {

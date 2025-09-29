@@ -3,15 +3,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CardFormSchema, type CardFormValues } from "@/lib/validation";
-import { api } from "@/lib/api";
+import { useIdempotentPost } from "@/hooks/idempotency";
 import { createCardToken } from "@/lib/cardHasher";
 
 type Product = { id: string; priceCents: number };
+type CardResp = { orderId: string; paymentId: string; status: "APPROVED" | "DECLINED"; reason?: string; method: "CARD" };
 
 export default function CardForm({ product }: { product: Product }) {
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
+  const [result, setResult] = useState<CardResp | null>(null);
   const { register, handleSubmit, formState: { errors } } = useForm<CardFormValues>({
     resolver: zodResolver(CardFormSchema),
     defaultValues: {
@@ -25,21 +24,27 @@ export default function CardForm({ product }: { product: Product }) {
     }
   });
 
+  const { run: payCard, loading } = useIdempotentPost<CardResp>("/payments/card", "CARD_");
+
   const onSubmit = async (form: CardFormValues) => {
-    setLoading(true);
     try {
-      const tokenized = await createCardToken({ pan: form.cardNumber, exp: form.exp, holder: form.holder });
-      const r = await api("/payments/card", {
-        method: "POST",
-        body: JSON.stringify({
-          productId: product.id,
-          customer: { name: form.name, email: form.email, cpf: form.cpf, phone: form.phone },
-          ...tokenized
-        }),
+      const tokenized = await createCardToken({
+        pan: form.cardNumber,
+        exp: form.exp,
+        holder: form.holder,
       });
+
+      const body = {
+        productId: product.id,
+        customer: { name: form.name, email: form.email, cpf: form.cpf, phone: form.phone },
+        ...tokenized,
+      };
+
+      const r = await payCard(body);
       setResult(r);
-    } catch (e: any) { alert("Erro no pagamento: " + e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) {
+      alert("Erro no pagamento: " + (e?.message ?? e));
+    }
   };
 
   return (
