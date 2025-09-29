@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <header className="border-b border-white/10">
           <div className="container-page py-6">
-            <h1 className="text-xl font-semibold">Santa Group • Checkout</h1>
+            <h1 className="text-xl font-semibold">Checkout</h1>
           </div>
         </header>
         <main className="container-page">{children}</main>
